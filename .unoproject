@@ -1,0 +1,10 @@
+#UNO project configuration file
+#Tue Mar 26 12:18:44 CET 2019
+project.prefix=de.lernapparat
+project.language=Python
+project.ooo=LibreOffice 6.2
+project.idl=/idl
+project.implementation=comp
+project.build=build
+project.sdk=6.2.0.2
+project.srcdir=/source

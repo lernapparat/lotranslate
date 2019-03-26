@@ -1,0 +1,11 @@
+#ifndef __de_lernapparat_lotranslate_xlotranslate_idl__
+#define __de_lernapparat_lotranslate_xlotranslate_idl__
+
+module de { module lernapparat { module lotranslate { 	
+
+	interface XLotranslate {
+
+	};
+
+ }; }; };
+#endif

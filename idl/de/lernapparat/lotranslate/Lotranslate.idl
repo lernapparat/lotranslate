@@ -1,0 +1,12 @@
+#ifndef __de_lernapparat_lotranslate_lotranslate_idl__
+#define __de_lernapparat_lotranslate_lotranslate_idl__
+
+#include <de/lernapparat/lotranslate/XLotranslate.idl>
+module de { module lernapparat { module lotranslate { 	
+
+	service Lotranslate : de::lernapparat::lotranslate::XLotranslate {
+
+	};
+
+ }; }; };
+#endif
