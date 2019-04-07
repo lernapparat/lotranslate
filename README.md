@@ -33,3 +33,9 @@ Select (formatted) text to translate and hit translate.
 This extension is licensed under the Mozilla Public License v2 and the GNU
 Lesser GPL v3+. You may choose either license. Restrictions to
 third-party code and models may apply.
+
+## Acknowledgement
+
+This project has received funding from the German [Federal Ministry of
+Education and Research](https://bmbf.de/) through the
+[Prototype fund](https://prototypefund.de/).
