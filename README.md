@@ -5,6 +5,10 @@ LibreOffice.
 
 For now it is English to German.
 
+![The quick brown fox jumps over the lazy dog.](quickbrownfox1.png)
+
+![Der schnelle braune Fuchs springt über den faulen Hund.](quickbrownfox2.png)
+
 ## Build Instructions
 
 The git repository can be used with
