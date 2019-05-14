@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- oor:name must be identical to the filename of this xcs file //-->
+<oor:component-schema xmlns:oor="http://openoffice.org/2001/registry"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  oor:name="Options"
+  oor:package="de.lernapparat.lotranslate" xml:lang="en-US">
+  <info>
+    <author>Thomas Viehmann</author>
+    <desc>Contains the options data.</desc>
+  </info>
+  <templates>
+    <group oor:name="Leaf">
+      <info>
+        <desc>The data for one leaf.</desc>
+      </info>
+      <prop oor:name="String0" oor:type="xs:string">
+        <value></value>
+      </prop>
+      <prop oor:name="String1" oor:type="xs:string">
+        <value></value>
+      </prop>
+      <prop oor:name="String2" oor:type="xs:string">
+        <value></value>
+      </prop>
+      <prop oor:name="String3" oor:type="xs:string">
+        <value></value>
+      </prop>
+      <prop oor:name="String4" oor:type="xs:string">
+        <value></value>
+      </prop>
+    </group>
+  </templates>
+  <component>
+    <group oor:name="Leaves">
+      <group oor:name="OptionsPage" oor:type="Leaf">
+        <prop oor:name="chkEditBeforeReplace" oor:type="xs:short">
+          <value>1</value>
+        </prop>
+        <prop oor:name="lstTranslationModels" oor:type="oor:string-list">
+          <value>Apples Bananas Oranges Grapes</value>
+        </prop>
+      </group>
+    </group>
+  </component>
+</oor:component-schema>

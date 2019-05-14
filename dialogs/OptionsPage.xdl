@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE dlg:window PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "dialog.dtd">
+<dlg:window xmlns:dlg="http://openoffice.org/2000/dialog" xmlns:script="http://openoffice.org/2000/script" dlg:id="OptionsPage" dlg:left="111" dlg:top="52" dlg:width="174" dlg:height="147" dlg:help-text="&amp;0.OptionsPage.HelpText" dlg:help-url="de.lernapparat.lotranslate.OptionsPage:textoptionsdemoxml" dlg:closeable="true" dlg:moveable="true" dlg:title="&amp;1.OptionsPage.Title" dlg:withtitlebar="false">
+ <dlg:bulletinboard>
+  <dlg:checkbox dlg:id="chkEditBeforeReplace" dlg:tab-index="0" dlg:left="8" dlg:top="11" dlg:width="160" dlg:height="10" dlg:help-text="&amp;2.OptionsPage.chkEditBeforeReplace.HelpText" dlg:value="&amp;3.OptionsPage.chkEditBeforeReplace.Label" dlg:checked="true"/>
+  <dlg:text dlg:id="lblTranslationModels" dlg:tab-index="2" dlg:left="8" dlg:top="47" dlg:width="158" dlg:height="12" dlg:help-text="&amp;6.OptionsPage.lblTranslationModels.HelpText" dlg:value="&amp;7.OptionsPage.lblTranslationModels.Label"/>
+  <dlg:menulist dlg:id="lstTranslationModels" dlg:tab-index="3" dlg:left="8" dlg:top="63" dlg:width="158" dlg:height="51" dlg:help-text="&amp;8.OptionsPage.lstTranslationModels.HelpText">
+   <dlg:menupopup>
+    <dlg:menuitem dlg:value="&amp;12.lstTranslationModels.StringItemList"/>
+    <dlg:menuitem dlg:value="&amp;13.lstTranslationModels.StringItemList"/>
+    <dlg:menuitem dlg:value="&amp;14.lstTranslationModels.StringItemList"/>
+   </dlg:menupopup>
+  </dlg:menulist>
+  <dlg:button dlg:id="CommandButtonNew" dlg:tab-index="4" dlg:left="173" dlg:top="63" dlg:width="51" dlg:height="13" dlg:value="New">
+     <script:event script:event-name="on-performaction" script:macro-name="vnd.sun.star.UNO:actionNewModel" script:language="UNO"/>
+  </dlg:button>
+  <dlg:button dlg:id="CommandButtonEdit" dlg:tab-index="5" dlg:left="173" dlg:top="78" dlg:width="51" dlg:height="13" dlg:value="Edit">
+     <script:event script:event-name="on-performaction" script:macro-name="vnd.sun.star.UNO:actionEditModel" script:language="UNO"/>
+  </dlg:button>
+  <dlg:button dlg:id="CommandButtonDelete" dlg:tab-index="6" dlg:left="173" dlg:top="93" dlg:width="51" dlg:height="13" dlg:value="Delete">
+     <script:event script:event-name="on-performaction" script:macro-name="vnd.sun.star.UNO:actionDeleteModel" script:language="UNO"/>
+  </dlg:button>
+ </dlg:bulletinboard>
+</dlg:window>

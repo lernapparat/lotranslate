@@ -26,6 +26,8 @@ sys.path.append(glob.glob(os.path.expanduser('~/libreoffice/loeclipse-prep/eclip
 sys.path.append(os.path.join(os.path.dirname(__file__), '../classes'))
 
 import lotranslate_backend
+import dialog_event_handler
+
 translator = lotranslate_backend.TranslationModel()
 
 class lotranslate(unohelper.Base, XJobExecutor, XEventListener):
@@ -108,3 +110,7 @@ g_ImplementationHelper.addImplementation(
     lotranslate,
     "de.lernapparat.lotranslate",
     ("com.sun.star.task.JobExecutor",))
+g_ImplementationHelper.addImplementation(
+    dialog_event_handler.CfgDialogEventHandler,
+    "de.lernapparat.lotranslate.CfgDialogEventHandler",
+    ("com.sun.star.awt.ContainerWindowEventHandler",))
