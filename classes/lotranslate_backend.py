@@ -12,6 +12,8 @@ import torch
 import sys
 import os
 
+import simplejson
+
 import spacy
 
 #language_model_en = spacy.load("en")
@@ -275,6 +277,14 @@ class TranslationModel:
         if cur_w:
             res_words.append((cur_w.rstrip(), cur_attn))
         return res_words
+
+def load_model_config(path : str):
+    try:
+        conf = simplejson.load(open(path))
+        conf['base_path'] = path
+    except Exception as e:
+        conf = None
+    return conf
 
 if __name__ == '__main__':
     text = ["The qui", "ck brown fox jumps", " over the lazy dog."]
