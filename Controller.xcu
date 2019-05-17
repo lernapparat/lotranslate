@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<oor:component-data xmlns:oor="http://openoffice.org/2001/registry" xmlns:xs="http://www.w3.org/2001/XMLSchema" oor:package="org.openoffice.Office.UI" oor:name="Controller">
+  <node oor:name="Registered">
+    <node oor:name="PopupMenu">
+      <node oor:name="de.lernapparat.lotranslate.TranslationMenu:top" oor:op="replace">
+        <prop oor:name="Command">
+          <value>de.lernapparat.lotranslate.TranslationMenu:top</value>
+        </prop>
+        <prop oor:name="Module">
+          <value/>
+        </prop>
+        <prop oor:name="Controller">
+          <value>de.lernapparat.lotranslate.TranslationMenuController</value>
+        </prop>
+      </node>
+    </node>
+  </node>
+</oor:component-data>

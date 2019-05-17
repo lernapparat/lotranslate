@@ -21,7 +21,7 @@ import os
 sys.dont_write_bytecode = True
 sys.path.append(glob.glob(os.path.expanduser('~/libreoffice/loeclipse-prep/eclipse/plugins/org.python.pydev.core_*/pysrc/'))[-1])
 #sys.path.append(os.path.expanduser('~/python/pytorch/opennmt-py'))
-#import pydevd; pydevd.settrace()
+# import pydevd; pydevd.settrace()
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../classes'))
 
@@ -108,9 +108,19 @@ class lotranslate(unohelper.Base, XJobExecutor, XEventListener):
 g_ImplementationHelper = unohelper.ImplementationHelper()
 g_ImplementationHelper.addImplementation(
     lotranslate,
-    "de.lernapparat.lotranslate",
+    "de.lernapparat.lotranslate.TranslateMenu",
     ("com.sun.star.task.JobExecutor",))
 g_ImplementationHelper.addImplementation(
     dialog_event_handler.CfgDialogEventHandler,
     "de.lernapparat.lotranslate.CfgDialogEventHandler",
     ("com.sun.star.awt.ContainerWindowEventHandler",))
+g_ImplementationHelper.addImplementation(
+    dialog_event_handler.TranslationMenuController,
+    "de.lernapparat.lotranslate.TranslationMenuController",
+    ("com.sun.star.frame.PopupMenuController",
+     "com.sun.star.awt.MenuListener"))
+g_ImplementationHelper.addImplementation(
+    dialog_event_handler.TranslationMenuController,
+    "de.lernapparat.lotranslate.TranslationMenu",
+    ("com.sun.star.frame.PopupMenuController",
+     "com.sun.star.awt.MenuListener"))
