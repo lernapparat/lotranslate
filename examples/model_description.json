@@ -1,0 +1,16 @@
+{
+    "id": 100,
+    "model": "averaged-10-epoch.pt",
+    "timeout": 600,
+    "load": true,
+    "opt": {
+        "beam_size": 10
+    },
+    "tokenizer": {
+        "type": "sentencepiece",
+        "model": "sentencepiece.model"
+    },
+    "menu_entry" : {
+	"*": "English to German"
+    }
+}

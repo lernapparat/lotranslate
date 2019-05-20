@@ -1,4 +1,3 @@
-
 import uno
 import unohelper
 from com.sun.star.awt import XContainerWindowEventHandler
@@ -8,10 +7,10 @@ from com.sun.star.beans import PropertyValue
 from com.sun.star.awt.MessageBoxType import ERRORBOX
 from com.sun.star.awt.MessageBoxButtons import BUTTONS_OK
 
-import lotranslate_backend
+import traceback
+import collections
 
-# thread safety?!
-global_models = []
+import lotranslate_backend
 
 
 def message_box(message_text):
@@ -42,39 +41,163 @@ def configuration_access(path, write=False):
     return configurationAccess
 
 
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+# thread safety?!
+class ConfigurationManager(metaclass=Singleton):
+    def __init__(self):
+        self.models = []
+        self.listeners = []
+        self.load_config()
+
+    def add_listener(self, listener):
+        self.listeners.append(listener)
+
+    def load_model_config(self, url):
+        path = unohelper.fileUrlToSystemPath(url)
+        cfg = lotranslate_backend.load_model_config(path)
+        if cfg is not None:
+            cfg['lotranslate-path-url'] = url
+        return cfg
+
+    def load_config(self):
+        # import pydevd; pydevd.settrace()  # noqa: E702
+        cfg_access = configuration_access(
+            "/de.lernapparat.lotranslate.Options/Options")
+        self.edit_before_replace = cfg_access.getByName('chkEditBeforeReplace')
+        model_urls = cfg_access.getByName('lstTranslationModels')
+        self.models.clear()
+        for u in model_urls:
+            cfg = self.load_model_config(u)
+            if cfg is not None:
+                self.models.append(cfg)
+        self.notify_listeners()
+
+    def notify_listeners(self):
+        for l in self.listeners:
+            l()
+
+    def add_model(self, fn):
+        cfg = self.load_model_config(fn)
+        if cfg is not None:
+            self.models.append(cfg)
+            self.notify_listeners()
+        else:
+            message_box("Could not load model config")
+
+    def save_config(self):
+        # import pydevd; pydevd.settrace()
+        update_access = configuration_access(
+            "/de.lernapparat.lotranslate.Options/Options", write=True)
+        update_access.setPropertyValue('chkEditBeforeReplace',
+                                       self.edit_before_replace)
+        urls = tuple(m['lotranslate-path-url'] for m in self.models)
+        # update_access.setPropertyValue('lstTranslationModels', urls)
+        # does not work
+        # see https://bugs.documentfoundation.org/show_bug.cgi?id=125307
+        uno.invoke(update_access, "setPropertyValue",
+                   (('lstTranslationModels', uno.Any("[]string", urls))))
+        update_access.commitChanges()
+
+
 class TranslationMenuController(unohelper.Base, XPopupMenuController, XMenuListener):
     def __init__(self, context, *args):
         # import pydevd; pydevd.settrace()  # noqa: E702
         self.ctx = context
+        self.cfg_man = ConfigurationManager()
 
     def setPopupMenu(self, popup_menu):
         self.popup = popup_menu
         # import pydevd; pydevd.settrace()  # noqa: E702
         popup_menu.removeItem(0, popup_menu.getItemCount())
-        if global_models:
-            for i, m in enumerate(global_models):
+        if self.cfg_man.models:
+            for i, m in enumerate(self.cfg_man.models):
                 # use Language specific menu entry instead of '*'
                 # insertItem(id, txt, style, pos)
                 popup_menu.insertItem(i + 1, m['menu_entry']['*'], 0, i)
+                popup_menu.setCommand(i + 1, 'de.lernapparat.lotranslate.TranslateCommand?{}'.format(i))
         else:
             popup_menu.insertItem(1, "No models", 0, 0)
             popup_menu.enableItem(1, False)
+        popup_menu.addMenuListener(self)
 
     def updatePopupMenu(self):
         # import pydevd; pydevd.settrace()  # noqa: E702
         pass
 
+    def translate(self, cfg):
+        desktop = self.ctx.ServiceManager.createInstanceWithContext(
+            "com.sun.star.frame.Desktop", self.ctx)
+        model = desktop.getCurrentComponent()
+        text = model.Text
+        cursor = text.createTextCursor()
+        try:
+            model = desktop.getCurrentComponent()
+            controller = model.CurrentController
+            cursor = controller.ViewCursor
+            documentText = cursor.getText()
+            modelCursor = documentText.createTextCursorByRange(cursor)  # .getStart())
+
+            text = model.Text
+
+            # note: words is not a list of words, but a list of similarly formatted bits
+            words = []
+            trs = []
+            for tc in list(modelCursor):  # .textContent
+                for tr in list(tc):  # textRange
+                    words.append(tr.String)
+                    pnames = [c for c in dir(tr) if c.startswith('Char')]
+                    trs.append(collections.OrderedDict(zip(pnames, tr.getPropertyValues(pnames))))
+            translated_words = lotranslate_backend.translate(cfg, words)
+            modelCursor.collapseToEnd()
+            text.insertString(modelCursor, "\n", 0)
+            cursor.collapseToEnd()
+            for s, ref_tr in translated_words:
+                d = trs[ref_tr]
+                pnames = [c for c in dir(tr) if c.startswith('Char') if c in d and c not in {'CharInteropGrabBag',
+                                                                                             'CharStyleName',
+                                                                                             'CharAutoStyleName'}]
+                pvals = [d[c] for c in pnames]
+                for n, v in zip(pnames, pvals):
+                    modelCursor.setPropertyValue(n, v)
+                # modelCursor.setPropertyValues(pnames, pvals)
+                text.insertString(modelCursor, s, 0)
+
+        except Exception as e:  # noqa: F841
+            model = desktop.getCurrentComponent()
+            text = model.Text
+            cursor = text.createTextCursor()
+            text.insertString(cursor, traceback.format_exc()+"\n", 0)
+            raise
+
     def itemSelected(self, event):
-        import pydevd; pydevd.settrace()  # noqa: E702
+        # import pydevd; pydevd.settrace()  # noqa: E702
+        cmd = event.Source.getCommand(event.MenuId)
+        parts = cmd.split('?')
+        if parts[0] == "de.lernapparat.lotranslate.TranslateCommand" and len(parts) == 2:
+            model_idx = int(parts[1])
+            self.translate(self.cfg_man.models[model_idx])
+        else:
+            pass  # error?
 
     def itemHighlighted(self, event):
-        import pydevd; pydevd.settrace()  # noqa: E702
+        # import pydevd; pydevd.settrace()  # noqa: E702
+        pass
 
     def itemActivated(self, event):
-        import pydevd; pydevd.settrace()  # noqa: E702
+        # import pydevd; pydevd.settrace()  # noqa: E702
+        pass
 
     def itemDeactivated(self, event):
-        import pydevd; pydevd.settrace()  # noqa: E702
+        # import pydevd; pydevd.settrace()  # noqa: E702
+        pass
 
     def disposing(self, source):
         pass
@@ -89,7 +212,9 @@ class CfgDialogEventHandler(unohelper.Base, XContainerWindowEventHandler):
         self.controlNames = {"chkEditBeforeReplace", "lstTranslationModels"}
 
         self.edit_before_replace = True
-        # global_models = []
+        self.window = None
+        self.cfg_man = ConfigurationManager()
+        self.cfg_man.add_listener(self.update_dialog)
         # self.__serviceName = "org.openoffice.demo.DialogEventHandler"
 
     def add_model(self, window):
@@ -104,51 +229,15 @@ class CfgDialogEventHandler(unohelper.Base, XContainerWindowEventHandler):
             fn = None
         filepicker.dispose()
         if fn is not None:
-            cfg = self.load_model_config(fn)
-            if cfg is not None:
-                global_models.append(cfg)
-                self.update_dialog(window)
-            else:
-                message_box("Could not load model config")
+            self.cfg_man.add_model(fn)
 
-    def load_model_config(self, url):
-        path = unohelper.fileUrlToSystemPath(url)
-        cfg = lotranslate_backend.load_model_config(path)
-        if cfg is not None:
-            cfg['lotranslate-path-url'] = url
-        return cfg
-
-    def load_config(self, window):
-        cfg_access = configuration_access(
-            "/de.lernapparat.lotranslate.Options/Options")
-        self.edit_before_replace = cfg_access.getByName('chkEditBeforeReplace')
-        model_urls = cfg_access.getByName('lstTranslationModels')
-        global_models.clear()
-        for u in model_urls:
-            cfg = self.load_model_config(u)
-            if cfg is not None:
-                global_models.append(cfg)
-        self.update_dialog(window)
-
-    def save_config(self, window):
-        # import pydevd; pydevd.settrace()
-        update_access = configuration_access(
-            "/de.lernapparat.lotranslate.Options/Options", write=True)
-        update_access.setPropertyValue('chkEditBeforeReplace',
-                                       self.edit_before_replace)
-        urls = tuple(m['lotranslate-path-url'] for m in global_models)
-        # update_access.setPropertyValue('lstTranslationModels', urls)
-        # does not work
-        # see https://bugs.documentfoundation.org/show_bug.cgi?id=125307
-        uno.invoke(update_access, "setPropertyValue",
-                   (('lstTranslationModels', uno.Any("[]string", urls))))
-        update_access.commitChanges()
-
-    def update_dialog(self, window):
-        model_list = window.getControl("lstTranslationModels")
+    def update_dialog(self):
+        if self.window is None:
+            return
+        model_list = self.window.getControl("lstTranslationModels")
         model_list.removeItems(0, model_list.getItemCount())
         # use Language specific menu entry instead of '*'
-        model_list.addItems([m['menu_entry']['*'] for m in global_models], 0)
+        model_list.addItems([m['menu_entry']['*'] for m in self.cfg_man.models], 0)
 
     def callHandlerMethod(self, window, event, method):
         # method is a string
@@ -156,12 +245,14 @@ class CfgDialogEventHandler(unohelper.Base, XContainerWindowEventHandler):
         # window is com.sun.star.awt.XWindow, but really XContainerWindow
         # first: "external_event" event: "initialize"
         # NewModel button: "actionNewModel" (defined in xdl), event: ActionEvent object
+        if window is not None:
+            self.window = window
         if method == "external_event":
             if event == "initialize" or event == "back":  # initialization or "Reset" button
-                self.load_config(window)
+                self.cfg_man.load_config()
                 return True
             elif event == "ok":
-                self.save_config(window)
+                self.cfg_man.save_config()
                 return True
             else:
                 import pydevd; pydevd.settrace()  # noqa: E702
