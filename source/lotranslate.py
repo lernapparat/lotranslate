@@ -17,6 +17,8 @@ import sys
 import glob
 import os
 
+if not sys.argv:
+    sys.argv.append('libreoffice-translate')
 sys.dont_write_bytecode = True
 
 sys.path.append(glob.glob(os.path.expanduser(

@@ -12,146 +12,20 @@ import torch
 import sys
 import os
 import codecs
+import copy
 
 import simplejson
 
 import onmt
+import onmt.model_builder
+import onmt.translate
+import onmt.utils.parse
+
 import sentencepiece
 
 # import spacy
 
 # language_model_en = spacy.load("en")
-
-base_dir = os.path.expanduser('~/python/pytorch/opennmt-py')
-sys.path.append(os.path.join(base_dir, 'OpenNMT-py'))
-
-
-opt = types.SimpleNamespace(
-    alpha=0.0,
-    attn_debug=False,
-    avg_raw_probs=False,
-    batch_size=30,
-    beam_size=5,
-    beta=-0.0,
-    block_ngram_repeat=0,
-    config=None,
-    coverage_penalty='none',
-    data_type='text',
-    dump_beam='',
-    dynamic_dict=False,
-    fp32=True,
-    gpu=-1,
-    ignore_when_blocking=[],
-    image_channel_size=3,
-    length_penalty='none',
-    log_file='',
-    log_file_level='0',
-    max_length=100,
-    max_sent_length=None,
-    min_length=0,
-    # models=[os.path.join(base_dir, 'available_models/model-ende/averaged-10-epoch.pt')],
-    n_best=1,
-    output='pred.txt',
-    random_sampling_temp=1.0,
-    random_sampling_topk=1,
-    replace_unk=False,
-    report_bleu=False,
-    report_rouge=False,
-    report_time=False,
-    sample_rate=16000,
-    save_config=None,
-    seed=829,
-    shard_size=10000,
-    share_vocab=False,
-    src='/tmp/x.txt',
-    src_dir='',
-    stepwise_penalty=False,
-    tgt=None,
-    verbose=False,
-    window='hamming',
-    window_size=0.02,
-    window_stride=0.01,
-    accum_count=4, adagrad_accumulator_init=0, adam_beta1=0.9, adam_beta2=0.998, audio_enc_pooling='1',
-)
-
-model_opt = types.SimpleNamespace(
-    batch_size=5120,
-    batch_type='tokens',
-    bridge=False,
-    brnn=False,
-    brnn_merge='concat',
-    cnn_kernel_width=3,
-    context_gate=None,
-    copy_attn=False,
-    copy_attn_force=False,
-    copy_attn_type=None,
-    copy_loss_by_seqlength=False,
-    coverage_attn=False,
-    data='wmt14.en-de',
-    dec_layers=6,
-    dec_rnn_size=500,
-    decay_method='noam',
-    decoder_type='transformer',
-    dropout=0.1,
-    enc_layers=6,
-    enc_rnn_size=500,
-    encoder_type='transformer',
-    epochs=20,
-    exp='',
-    exp_host='',
-    feat_merge='concat',
-    feat_vec_exponent=0.7,
-    feat_vec_size=-1,
-    fix_word_vecs_dec=False,
-    fix_word_vecs_enc=False,
-    generator_function='softmax',
-    global_attention='general',
-    global_attention_function='softmax',
-    gpuid=[0],
-    heads=8,
-    input_feed=1,
-    label_smoothing=0.1,
-    lambda_coverage=1,
-    layers=6,
-    learning_rate=2.0,
-    learning_rate_decay=0.5,
-    loss_scale=0,
-    max_generator_batches=4,
-    max_grad_norm=0.0,
-    max_relative_positions=0,
-    model_dtype='fp32',
-    model_type='text',
-    normalization='tokens',
-    optim='sparseadam',
-    param_init=0.0,
-    position_encoding=True,
-    pre_word_vecs_dec=None,
-    pre_word_vecs_enc=None,
-    report_every=50,
-    reuse_copy_attn=False,
-    rnn_size=512,
-    rnn_type='LSTM',
-    sample_rate=16000,
-    save_model='wmt14.en-de',
-    seed=-1,
-    self_attn_type='scaled-dot',
-    share_decoder_embeddings=False,
-    share_embeddings=False,
-    src_word_vec_size=512,
-    start_checkpoint_at=1,
-    start_decay_at=8,
-    start_epoch=1,
-    tensorboard=True,
-    tensorboard_log_dir='runs/wmt_ende2',
-    tgt_word_vec_size=512,
-    train_from='',
-    transformer_ff=2048,
-    truncated_decoder=0,
-    valid_batch_size=32,
-    warmup_steps=8000,
-    window_size=0.02,
-    word_vec_size=512)
-
 
 class SentencePieceTokenizer:
     def __init__(self, path):
@@ -163,35 +37,18 @@ class SentencePieceTokenizer:
 
 
 class TranslationModel:
-    def __init__(self, model_path: str):
+    def __init__(self, model_path: str, model_opt: dict={}):
         self.output = io.StringIO()
 
-        # fields, model, model_opt = onmt.model_builder.load_test_model(opt)
-
-        # model_path = opt.models[0]
-        checkpoint = torch.load(model_path,
-                                map_location=lambda storage, loc: storage)
-
-        from onmt.utils.parse import ArgumentParser
-        # model_opt = ArgumentParser.ckpt_model_opts(checkpoint['opt'])
-
-        ArgumentParser.update_model_opts(model_opt)
-        ArgumentParser.validate_model_opts(model_opt)
-        print(model_opt)
-        vocab = checkpoint['vocab']
-        if onmt.inputters.old_style_vocab(vocab):
-            fields = onmt.inputters.load_old_vocab(
-                vocab, opt.data_type, dynamic_dict=model_opt.copy_attn
-            )
-        else:
-            fields = vocab
-
-        model = onmt.model_builder.build_base_model(model_opt, fields, onmt.utils.misc.use_gpu(opt), checkpoint,
-                                                    opt.gpu)
-        if opt.fp32:
-            model.float()
-        model.eval()
-        model.generator.eval()
+        parser = onmt.utils.parse.ArgumentParser()
+        onmt.opts.config_opts(parser)
+        onmt.opts.translate_opts(parser)
+        opt = {a.dest: a.default for a  in parser._actions}
+        opt.update(model_opt)
+        opt = types.SimpleNamespace(**opt)
+        opt.models = [model_path]
+        self.opt = opt
+        fields, model, model_opt = onmt.model_builder.load_test_model(opt)
 
         scorer = onmt.translate.GNMTGlobalScorer.from_opt(opt)
 
@@ -237,7 +94,7 @@ class TranslationModel:
             pos += thislen
 
         src = [tokens]
-        src_dir = opt.src_dir
+        src_dir = self.opt.src_dir
         attn_debug = True  # opt.attn_debug
 
         data = onmt.inputters.Dataset(
@@ -252,7 +109,7 @@ class TranslationModel:
         data_iter = onmt.inputters.OrderedIterator(
                     dataset=data,
                     device=self.translator._dev,
-                    batch_size=opt.batch_size,
+                    batch_size=self.opt.batch_size,
                     train=False,
                     sort=False,
                     sort_within_batch=True,
@@ -390,7 +247,7 @@ def translate(cfg, words):
     model_key = 'translationmodel:' + model_path
     model = translation_models.get(model_key)  # fix - use the model we want
     if model is None:
-        model = TranslationModel(model_path)
+        model = TranslationModel(model_path, cfg.get("opt", {}))
         translation_models[model_key] = model
     return model.translate(words, tokenizer=tokenizer)
 

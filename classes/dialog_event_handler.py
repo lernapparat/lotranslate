@@ -150,11 +150,13 @@ class TranslationMenuController(unohelper.Base, XPopupMenuController, XMenuListe
             # note: words is not a list of words, but a list of similarly formatted bits
             words = []
             trs = []
+            # import pydevd; pydevd.settrace()  # noqa: E702
             for tc in list(modelCursor):  # .textContent
-                for tr in list(tc):  # textRange
-                    words.append(tr.String)
-                    pnames = [c for c in dir(tr) if c.startswith('Char')]
-                    trs.append(collections.OrderedDict(zip(pnames, tr.getPropertyValues(pnames))))
+                for tr in list(tc):  # textRange, TextPortion
+                    if tr.TextPortionType == "Text":
+                        words.append(tr.String)
+                        pnames = [c for c in dir(tr) if c.startswith('Char')]
+                        trs.append(collections.OrderedDict(zip(pnames, tr.getPropertyValues(pnames))))
             translated_words = lotranslate_backend.translate(cfg, words)
             modelCursor.collapseToEnd()
             text.insertString(modelCursor, "\n", 0)
