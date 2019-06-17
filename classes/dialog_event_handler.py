@@ -135,17 +135,14 @@ class TranslationMenuController(unohelper.Base, XPopupMenuController, XMenuListe
     def translate(self, cfg):
         desktop = self.ctx.ServiceManager.createInstanceWithContext(
             "com.sun.star.frame.Desktop", self.ctx)
-        model = desktop.getCurrentComponent()
-        text = model.Text
-        cursor = text.createTextCursor()
         try:
-            model = desktop.getCurrentComponent()
-            controller = model.CurrentController
+            component = desktop.getCurrentComponent()
+            controller = component.CurrentController
             cursor = controller.ViewCursor
             documentText = cursor.getText()
             modelCursor = documentText.createTextCursorByRange(cursor)  # .getStart())
 
-            text = model.Text
+            text = component.Text
 
             # note: words is not a list of words, but a list of similarly formatted bits
             words = []
@@ -160,7 +157,10 @@ class TranslationMenuController(unohelper.Base, XPopupMenuController, XMenuListe
             translated_words = lotranslate_backend.translate(cfg, words)
             modelCursor.collapseToEnd()
             text.insertString(modelCursor, "\n", 0)
-            cursor.collapseToEnd()
+            modelCursor.collapseToEnd()
+            #modelCursorBeginning = (type(modelCursor))(modelCursor)
+            #cursor.collapseToEnd()
+            insertedchars = 0
             for s, ref_tr in translated_words:
                 d = trs[ref_tr]
                 pnames = [c for c in dir(tr) if c.startswith('Char') if c in d and c not in {'CharInteropGrabBag',
@@ -171,10 +171,17 @@ class TranslationMenuController(unohelper.Base, XPopupMenuController, XMenuListe
                     modelCursor.setPropertyValue(n, v)
                 # modelCursor.setPropertyValues(pnames, pvals)
                 text.insertString(modelCursor, s, 0)
-
+                insertedchars += len(s)
+            # import pydevd; pydevd.settrace()  # noqa: E702
+            modelCursor.goLeft(insertedchars, True)  # somehow gotoRange with extend=True doesn't seem to work...
+            annot = component.createInstance("com.sun.star.text.textfield.Annotation")
+            annot.Content = ''.join(words)
+            annot.Author = "LOTranslate"
+            text.insertTextContent(modelCursor, annot, False)
+            annot.attach(modelCursor)
         except Exception as e:  # noqa: F841
-            model = desktop.getCurrentComponent()
-            text = model.Text
+            component = desktop.getCurrentComponent()
+            text = component.Text
             cursor = text.createTextCursor()
             text.insertString(cursor, traceback.format_exc()+"\n", 0)
             raise
