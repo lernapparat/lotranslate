@@ -2,17 +2,14 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import unicode_literals
-from itertools import count
+import itertools
 import types
 import time
 import io
 import re
-import torch
 
-import sys
 import os
 import codecs
-import copy
 
 import simplejson
 
@@ -27,6 +24,7 @@ import sentencepiece
 
 # language_model_en = spacy.load("en")
 
+
 class SentencePieceTokenizer:
     def __init__(self, path):
         self.sp = sentencepiece.SentencePieceProcessor()
@@ -36,14 +34,27 @@ class SentencePieceTokenizer:
         return self.sp.EncodeAsPieces(s)
 
 
+class SyntokSentenceSplitter:
+    def __init__(self):
+        import syntok.tokenizer
+        import syntok.segmenter
+        self.tok = syntok.tokenizer.Tokenizer(replace_not_contraction=False)
+        self.segment = syntok.segmenter.segment
+
+    def split(self, txt: str):
+        tokens = self.tok.tokenize(txt, 0)
+        begins = [s[0].offset for s in self.segment(tokens)]+[len(txt)]
+        return [txt[begins[i]: begins[i+1]] for i in range(len(begins)-1)]
+
+
 class TranslationModel:
-    def __init__(self, model_path: str, model_opt: dict={}):
+    def __init__(self, model_path: str, model_opt: dict = {}):
         self.output = io.StringIO()
 
         parser = onmt.utils.parse.ArgumentParser()
         onmt.opts.config_opts(parser)
         onmt.opts.translate_opts(parser)
-        opt = {a.dest: a.default for a  in parser._actions}
+        opt = {a.dest: a.default for a in parser._actions}
         opt.update(model_opt)
         opt = types.SimpleNamespace(**opt)
         opt.models = [model_path]
@@ -62,7 +73,7 @@ class TranslationModel:
             report_score=True,
         )
 
-    def translate(self, text, tokenizer):
+    def translate(self, text, tokenizer, sentencizer):
         self.output.seek(0)
         self.output.truncate()
         text_joined = ''.join(text)
@@ -71,29 +82,38 @@ class TranslationModel:
         for t in text:
             p += len(t)
             start_pos.append(p)
-        text_split = re.split(r'(\S+)', text_joined)
-        tokens = [s for s in tokenizer.tokenize(' '.join(text_split[1::2]))]
-        x = (''.join(tokens).split('\u2581'))
-        assert x[0] == '' and x[1:] == text_split[1::2]
+
+        sentences = sentencizer.split(text_joined)
+        tokens = []
+        text_split = []
+        for sent in sentences:
+            sentence_split = re.split(r'(\S+)', sent)
+            sentence_tokens = [s for s in tokenizer.tokenize(' '.join(sentence_split[1::2]))]
+            x = (''.join(sentence_tokens).split('\u2581'))
+            assert x[0] == '' and x[1:] == sentence_split[1::2]
+            tokens.append(sentence_tokens)
+            text_split.append(sentence_split)
 
         token_maps = []
         pos = 0
-        numwhitespace = 0
         input_piece = 0
-        for t in tokens:
-            thislen = len(t)
-            if t.startswith('\u2581'):
-                pos += len(text_split[2*numwhitespace])
-                numwhitespace += 1
-                thislen -= 1
-            if pos >= start_pos[input_piece+1]:
-                # could move if most of the characters lie in next input piece
-                # instead "all of them"
-                input_piece += 1
-            token_maps.append(input_piece)
-            pos += thislen
+        for sent_no, (sent_tokens, sent_split) in enumerate(zip(tokens, text_split)):
+            token_maps.append([])
+            numwhitespace = 0
+            for t in sent_tokens:
+                thislen = len(t)
+                if t.startswith('\u2581'):
+                    pos += len(sent_split[2*numwhitespace])
+                    numwhitespace += 1
+                    thislen -= 1
+                if pos >= start_pos[input_piece+1]:
+                    # could move if most of the characters lie in next input piece
+                    # instead "all of them"
+                    input_piece += 1
+                token_maps[-1].append(input_piece)
+                pos += thislen
 
-        src = [tokens]
+        src = tokens
         src_dir = self.opt.src_dir
         attn_debug = True  # opt.attn_debug
 
@@ -121,13 +141,14 @@ class TranslationModel:
                 )
 
         # Statistics
-        counter = count(1)
+        counter = itertools.count(1)
         pred_score_total, pred_words_total = 0, 0
 
         all_scores = []
         all_predictions = []
 
         start_time = time.time()
+        attn_to_src_words = []
 
         for batch in data_iter:
             batch_data = self.translator.translate_batch(
@@ -135,7 +156,7 @@ class TranslationModel:
             )
             translations = xlation_builder.from_batch(batch_data)
 
-            for trans in translations:
+            for trans, token_map in zip(translations, token_maps):
                 all_scores += [trans.pred_scores[:self.translator.n_best]]
                 pred_score_total += trans.pred_scores[0]
                 pred_words_total += len(trans.pred_sents[0])
@@ -153,10 +174,9 @@ class TranslationModel:
                 if attn_debug:
                     preds = trans.pred_sents[0]
                     preds.append('</s>')
-
                     # FIXME: an alternative here would be map first and then take the argmax. it'll be more precise
-                    attn_to_src_words = ([token_maps[i] for i in trans.attns[0][:-2, :-1].argmax(1).tolist()]
-                                         + [token_maps[i] for i in trans.attns[0][-2:].argmax(1).tolist()])
+                    attn_to_src_words.append([token_map[i] for i in trans.attns[0][:-2, :-1].argmax(1).tolist()]
+                                             + [token_map[i] for i in trans.attns[0][-2:].argmax(1).tolist()])
 
                     attns = trans.attns[0].tolist()
                     if self.translator.data_type == 'text':
@@ -196,22 +216,25 @@ class TranslationModel:
             json.dump(self.translator.translator.beam_accum,
                       codecs.open(self.translator.dump_beam, 'w', 'utf-8'))
 
-        res = self.output.getvalue().split(' ')
-        if res:
-            res[0] = res[0].lstrip('\u2581')
-        cur_attn = 0
-        cur_w = ''
+        # import pdb; pdb.set_trace()
         res_words = []
-        for attn, w in zip(attn_to_src_words, res):
-            if attn != cur_attn:
-                if cur_w:
-                    res_words.append((cur_w, cur_attn))
-                    cur_w = ''
-                cur_attn = attn
-            cur_w += w.replace('\u2581', ' ')
-        if cur_w:
-            res_words.append((cur_w.rstrip(), cur_attn))
-        return res_words
+        for tr, attns in zip(all_predictions, attn_to_src_words):
+            res_words.append([])
+            res = tr[0].split(' ')
+            if res:
+                res[0] = res[0].lstrip('\u2581')
+            cur_attn = 0
+            cur_w = ''
+            for attn, w in zip(attns, res):
+                if attn != cur_attn:
+                    if cur_w:
+                        res_words[-1].append((cur_w, cur_attn))
+                        cur_w = ''
+                    cur_attn = attn
+                cur_w += w.replace('\u2581', ' ')
+            if cur_w:
+                res_words[-1].append((cur_w.rstrip(), cur_attn))
+        return list(zip(res_words, sentences))
 
 
 def load_model_config(path: str):
@@ -249,11 +272,13 @@ def translate(cfg, words):
     if model is None:
         model = TranslationModel(model_path, cfg.get("opt", {}))
         translation_models[model_key] = model
-    return model.translate(words, tokenizer=tokenizer)
+    sentencizer = SyntokSentenceSplitter()
+    return model.translate(words, tokenizer=tokenizer, sentencizer=sentencizer)
 
 
 if __name__ == '__main__':
-    text = ["The qui", "ck brown fox jumps", " over the lazy dog."]
+    text = ["The qui", "ck brown fox jumps", " over the lazy dog. The dog", " walked to Mr. Brown."]
     # text = 'We are happy to welcome you here!'
-    tr = TranslationModel()
-    print(tr.translate(text))
+    cfg = load_model_config(os.path.expanduser(
+        '~/python/pytorch/opennmt-py/available_models/model-ende/model_description.json'))
+    print(translate(cfg, text))

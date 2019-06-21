@@ -154,31 +154,31 @@ class TranslationMenuController(unohelper.Base, XPopupMenuController, XMenuListe
                         words.append(tr.String)
                         pnames = [c for c in dir(tr) if c.startswith('Char')]
                         trs.append(collections.OrderedDict(zip(pnames, tr.getPropertyValues(pnames))))
-            translated_words = lotranslate_backend.translate(cfg, words)
+            translated_sentences = lotranslate_backend.translate(cfg, words)
             modelCursor.collapseToEnd()
             text.insertString(modelCursor, "\n", 0)
             modelCursor.collapseToEnd()
-            #modelCursorBeginning = (type(modelCursor))(modelCursor)
-            #cursor.collapseToEnd()
-            insertedchars = 0
-            for s, ref_tr in translated_words:
-                d = trs[ref_tr]
-                pnames = [c for c in dir(tr) if c.startswith('Char') if c in d and c not in {'CharInteropGrabBag',
-                                                                                             'CharStyleName',
-                                                                                             'CharAutoStyleName'}]
-                pvals = [d[c] for c in pnames]
-                for n, v in zip(pnames, pvals):
-                    modelCursor.setPropertyValue(n, v)
-                # modelCursor.setPropertyValues(pnames, pvals)
-                text.insertString(modelCursor, s, 0)
-                insertedchars += len(s)
-            # import pydevd; pydevd.settrace()  # noqa: E702
-            modelCursor.goLeft(insertedchars, True)  # somehow gotoRange with extend=True doesn't seem to work...
-            annot = component.createInstance("com.sun.star.text.textfield.Annotation")
-            annot.Content = ''.join(words)
-            annot.Author = "LOTranslate"
-            text.insertTextContent(modelCursor, annot, False)
-            annot.attach(modelCursor)
+            for translated_words, orig_sent in translated_sentences:
+                insertedchars = 0
+                for s, ref_tr in translated_words:
+                    d = trs[ref_tr]
+                    pnames = [c for c in dir(tr) if c.startswith('Char') if c in d and c not in {'CharInteropGrabBag',
+                                                                                                 'CharStyleName',
+                                                                                                 'CharAutoStyleName'}]
+                    pvals = [d[c] for c in pnames]
+                    for n, v in zip(pnames, pvals):
+                        modelCursor.setPropertyValue(n, v)
+                    # modelCursor.setPropertyValues(pnames, pvals)
+                    text.insertString(modelCursor, s, 0)
+                    insertedchars += len(s)
+                # import pydevd; pydevd.settrace()  # noqa: E702
+                modelCursor.goLeft(insertedchars, True)  # somehow gotoRange with extend=True doesn't seem to work...
+                annot = component.createInstance("com.sun.star.text.textfield.Annotation")
+                annot.Content = orig_sent
+                annot.Author = "LOTranslate"
+                text.insertTextContent(modelCursor, annot, False)
+                annot.attach(modelCursor)
+                modelCursor.collapseToEnd()
         except Exception as e:  # noqa: F841
             component = desktop.getCurrentComponent()
             text = component.Text
