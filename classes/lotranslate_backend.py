@@ -112,6 +112,8 @@ class TranslationModel:
                     input_piece += 1
                 token_maps[-1].append(input_piece)
                 pos += thislen
+            pos += len(sent_split[-1]) # trailing whitespace
+
 
         src = tokens
         src_dir = self.opt.src_dir

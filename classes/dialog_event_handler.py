@@ -155,8 +155,8 @@ class TranslationMenuController(unohelper.Base, XPopupMenuController, XMenuListe
                         pnames = [c for c in dir(tr) if c.startswith('Char')]
                         trs.append(collections.OrderedDict(zip(pnames, tr.getPropertyValues(pnames))))
             translated_sentences = lotranslate_backend.translate(cfg, words)
-            modelCursor.collapseToEnd()
-            text.insertString(modelCursor, "\n", 0)
+            modelCursor.setString("")
+            # import pydevd; pydevd.settrace()  # noqa: E702
             modelCursor.collapseToEnd()
             for translated_words, orig_sent in translated_sentences:
                 insertedchars = 0
@@ -179,6 +179,7 @@ class TranslationMenuController(unohelper.Base, XPopupMenuController, XMenuListe
                 text.insertTextContent(modelCursor, annot, False)
                 annot.attach(modelCursor)
                 modelCursor.collapseToEnd()
+                text.insertString(modelCursor, " ", 0)
         except Exception as e:  # noqa: F841
             component = desktop.getCurrentComponent()
             text = component.Text
