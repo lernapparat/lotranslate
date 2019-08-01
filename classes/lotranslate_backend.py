@@ -13,18 +13,18 @@ import codecs
 
 import simplejson
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'opennmt'))
-
-import onmt
-import onmt.model_builder
-import onmt.translate
-import onmt.utils.parse
-
 import sentencepiece
 
 # import spacy
 
 # language_model_en = spacy.load("en")
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'opennmt'))
+
+import onmt  # noqa: 402
+import onmt.model_builder  # noqa: 402
+import onmt.translate  # noqa: 402
+import onmt.utils.parse  # noqa: 402
 
 
 class SentencePieceTokenizer:
@@ -114,8 +114,7 @@ class TranslationModel:
                     input_piece += 1
                 token_maps[-1].append(input_piece)
                 pos += thislen
-            pos += len(sent_split[-1]) # trailing whitespace
-
+            pos += len(sent_split[-1])  # trailing whitespace
 
         src = tokens
         src_dir = self.opt.src_dir
@@ -179,8 +178,15 @@ class TranslationModel:
                     preds = trans.pred_sents[0]
                     preds.append('</s>')
                     # FIXME: an alternative here would be map first and then take the argmax. it'll be more precise
-                    attn_to_src_words.append([token_map[i] for i in trans.attns[0][:-2, :-1].argmax(1).tolist()]
-                                             + [token_map[i] for i in trans.attns[0][-2:].argmax(1).tolist()])
+                    attn_max = []
+                    if trans.attns[0].size(0) > 2:
+                        if trans.attns[0].size(1) > 1:
+                            attn_max += trans.attns[0][:-2, :-1].argmax(1).tolist()
+                        else:
+                            attn_max += trans.attns[0][:-2].argmax(1).tolist()
+                    if trans.attns[0].size(0) > 0:
+                        attn_max += trans.attns[0][-2:].argmax(1).tolist()
+                    attn_to_src_words.append([token_map[i] for i in attn_max])
 
                     attns = trans.attns[0].tolist()
                     if self.translator.data_type == 'text':

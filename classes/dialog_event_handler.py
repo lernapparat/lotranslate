@@ -144,42 +144,44 @@ class TranslationMenuController(unohelper.Base, XPopupMenuController, XMenuListe
 
             text = component.Text
 
-            # note: words is not a list of words, but a list of similarly formatted bits
-            words = []
-            trs = []
             # import pydevd; pydevd.settrace()  # noqa: E702
             for tc in list(modelCursor):  # .textContent
+                # note: words is not a list of words, but a list of similarly formatted bits
+                words = []
+                trs = []
+                partCursor = documentText.createTextCursorByRange(tc)  # .getStart())
                 for tr in list(tc):  # textRange, TextPortion
                     if tr.TextPortionType == "Text":
                         words.append(tr.String)
                         pnames = [c for c in dir(tr) if c.startswith('Char')]
                         trs.append(collections.OrderedDict(zip(pnames, tr.getPropertyValues(pnames))))
-            translated_sentences = lotranslate_backend.translate(cfg, words)
-            modelCursor.setString("")
-            # import pydevd; pydevd.settrace()  # noqa: E702
-            modelCursor.collapseToEnd()
-            for translated_words, orig_sent in translated_sentences:
-                insertedchars = 0
-                for s, ref_tr in translated_words:
-                    d = trs[ref_tr]
-                    pnames = [c for c in dir(tr) if c.startswith('Char') if c in d and c not in {'CharInteropGrabBag',
-                                                                                                 'CharStyleName',
-                                                                                                 'CharAutoStyleName'}]
-                    pvals = [d[c] for c in pnames]
-                    for n, v in zip(pnames, pvals):
-                        modelCursor.setPropertyValue(n, v)
-                    # modelCursor.setPropertyValues(pnames, pvals)
-                    text.insertString(modelCursor, s, 0)
-                    insertedchars += len(s)
-                # import pydevd; pydevd.settrace()  # noqa: E702
-                modelCursor.goLeft(insertedchars, True)  # somehow gotoRange with extend=True doesn't seem to work...
-                annot = component.createInstance("com.sun.star.text.textfield.Annotation")
-                annot.Content = orig_sent
-                annot.Author = "LOTranslate"
-                text.insertTextContent(modelCursor, annot, False)
-                annot.attach(modelCursor)
-                modelCursor.collapseToEnd()
-                text.insertString(modelCursor, " ", 0)
+                import pydevd; pydevd.settrace()  # noqa: E702
+                if not words or all(i == '' for i in words):
+                    continue
+                translated_sentences = lotranslate_backend.translate(cfg, words)
+                partCursor.setString("")
+                partCursor.collapseToEnd()
+                for translated_words, orig_sent in translated_sentences:
+                    insertedchars = 0
+                    for s, ref_tr in translated_words:
+                        d = trs[ref_tr]
+                        pnames = [c for c in dir(tr) if c.startswith('Char') if c in d and c not in
+                                  {'CharInteropGrabBag', 'CharStyleName', 'CharAutoStyleName'}]
+                        pvals = [d[c] for c in pnames]
+                        for n, v in zip(pnames, pvals):
+                            partCursor.setPropertyValue(n, v)
+                        # modelCursor.setPropertyValues(pnames, pvals)
+                        text.insertString(partCursor, s, 0)
+                        insertedchars += len(s)
+                    # import pydevd; pydevd.settrace()  # noqa: E702
+                    partCursor.goLeft(insertedchars, True)  # somehow gotoRange with extend=True doesn't seem to work...
+                    annot = component.createInstance("com.sun.star.text.textfield.Annotation")
+                    annot.Content = orig_sent
+                    annot.Author = "LOTranslate"
+                    text.insertTextContent(partCursor, annot, False)
+                    annot.attach(partCursor)
+                    partCursor.collapseToEnd()
+                    text.insertString(partCursor, " ", 0)
         except Exception as e:  # noqa: F841
             component = desktop.getCurrentComponent()
             text = component.Text
