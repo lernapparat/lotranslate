@@ -7,11 +7,13 @@ import types
 import time
 import io
 import re
-
+import sys
 import os
 import codecs
 
 import simplejson
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'opennmt'))
 
 import onmt
 import onmt.model_builder
