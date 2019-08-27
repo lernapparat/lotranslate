@@ -1,3 +1,6 @@
 [submodule "classes/opennmt"]
 	path = classes/opennmt
 	url = https://github.com/OpenNMT/OpenNMT-py
+[submodule "classes/syntok"]
+	path = classes/syntok
+	url = https://github.com/fnl/syntok
