@@ -20,6 +20,7 @@ import sentencepiece
 # language_model_en = spacy.load("en")
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'opennmt'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'syntok'))
 
 import onmt  # noqa: 402
 import onmt.model_builder  # noqa: 402
@@ -204,7 +205,7 @@ class TranslationModel:
                             "{:*>10.7f} ", "{:>10.7f} ", max_index)
                         output += row_format.format(word, *row) + '\n'
                         row_format = "{:>10.10} " + "{:>10.7f} " * len(srcs)
-                    print(output)
+                    # print(output)
 
         end_time = time.time()
 

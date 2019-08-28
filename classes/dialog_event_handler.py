@@ -149,13 +149,17 @@ class TranslationMenuController(unohelper.Base, XPopupMenuController, XMenuListe
                 # note: words is not a list of words, but a list of similarly formatted bits
                 words = []
                 trs = []
+                if unohelper.uno.getTypeByName("com.sun.star.text.XTextRange") not in tc.getTypes():
+                    # we should deal with tables here
+                    # tc.getCellNames() / tc.GetCellByName(s) if XTextTable is in the types
+                    continue
                 partCursor = documentText.createTextCursorByRange(tc)  # .getStart())
                 for tr in list(tc):  # textRange, TextPortion
                     if tr.TextPortionType == "Text":
                         words.append(tr.String)
                         pnames = [c for c in dir(tr) if c.startswith('Char')]
                         trs.append(collections.OrderedDict(zip(pnames, tr.getPropertyValues(pnames))))
-                import pydevd; pydevd.settrace()  # noqa: E702
+                # import pydevd; pydevd.settrace()  # noqa: E702
                 if not words or all(i == '' for i in words):
                     continue
                 translated_sentences = lotranslate_backend.translate(cfg, words)
