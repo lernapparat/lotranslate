@@ -17,7 +17,9 @@ import sys
 import glob
 import os
 
-if not sys.argv:
+if not hasattr(sys, "argv"):  # seems to be the case on Windows with LO 6.3.0
+    sys.argv = ['libreoffice-translate']
+elif not sys.argv:
     sys.argv.append('libreoffice-translate')
 sys.dont_write_bytecode = True
 
