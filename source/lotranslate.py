@@ -21,8 +21,8 @@ if not sys.argv:
     sys.argv.append('libreoffice-translate')
 sys.dont_write_bytecode = True
 
-sys.path.append(glob.glob(os.path.expanduser(
-    '~/libreoffice/loeclipse-prep/eclipse/plugins/org.python.pydev.core_*/pysrc/'))[-1])
+#sys.path.append(glob.glob(os.path.expanduser(
+#    '~/libreoffice/loeclipse-prep/eclipse/plugins/org.python.pydev.core_*/pysrc/'))[-1])
 
 # import pydevd; pydevd.settrace()
 
