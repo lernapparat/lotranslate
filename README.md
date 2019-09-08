@@ -1,36 +1,27 @@
 # LibreOffice Translate
 
 This is an extension providing Neural Machine Translation for
-LibreOffice.
+LibreOffice with a single click.
 
-For now it is English to German.
 
-![The quick brown fox jumps over the lazy dog.](quickbrownfox1.png)
+![Example](webpage/screenshot.png)
 
-![Der schnelle braune Fuchs springt über den faulen Hund.](quickbrownfox2.png)
+## Installing
 
-## Build Instructions
+Install the OXT from the [Release pages](https://github.com/lernapparat/lotranslate/releases/).
 
-The git repository can be used with
-[loeclipse](https://libreoffice.github.io/loeclipse/), the LibreOffice
-extension for Eclipse.
+## Installing Models
 
-You need a new version of the [Python
-loader](https://github.com/LibreOffice/core/blob/master/pyuno/source/loader/pythonloader.py)
-which includes a fix for importing modules. You can copy this file to
-your LibreOffice installation, on Debian at
-`/usr/lib/libreoffice/program/pythonloader.py`.
+Download and unpack the model.
+In Options -> Language -> Translation choose New and select the `.json` file.
 
-You need [OpenNMT-py](https://github.com/OpenNMT/OpenNMT-py) and the
-pretrained [English to German translation model](http://opennmt.net/Models-py/).
-Currently the path is hardcoded to
-`~/python/pytorch/opennmt-py/available_models/model-ende/averaged-10-epoch.pt`,
-but it will be configurable soon.
+You should get an entry in the new Translation menu for the model.
 
-## Use
-
-There is a new pull down menu "Translate" with item "English to German".
 Select (formatted) text to translate and hit translate.
+
+## Building and other technical notes
+
+See the [Technical notes](webpage/technical_notes.md) for build instructions.
 
 ## License
 
@@ -43,3 +34,5 @@ third-party code and models may apply.
 This project has received funding from the German [Federal Ministry of
 Education and Research](https://bmbf.de/) through the
 [Prototype fund](https://prototypefund.de/).
+
+![Prototype Fund](webpage/PrototypeFund-P-Logo.png) ![BMBF_sponsored](webpage/BMBF_sponsored.jpg)
