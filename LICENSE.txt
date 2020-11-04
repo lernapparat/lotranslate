@@ -1,0 +1,10 @@
+LibreOffice Translate
+
+(c) 2019 by Thomas Viehmann, all rights reserved.
+
+This extension is licensed under the Mozilla Public License v2 and the
+GNU Lesser GPL v3+. You may choose either license.
+
+This software builds on other software, such as LibreOffice and OpenNMT.
+Their respective licenses apply to their code, so restrictions to
+third-party code and models may apply.
